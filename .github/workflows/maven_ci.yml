@@ -30,6 +30,8 @@ jobs:
         java-version: 11
     - name: Generate artifact with Maven
       run: mvn package
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
     - name: Upload artifact
       uses: actions/upload-artifact@v1.0.0
       with:
