@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema"
+	targetNamespace="http://vacbot.sing.esei.uvigo.es/Settings"
+	xmlns:tns="http://vacbot.sing.esei.uvigo.es/Settings"
+	elementFormDefault="qualified">
+
+	<element name="settings">
+		<annotation>
+			<documentation>The settings for ${project.name}.</documentation>
+		</annotation>
+		<complexType mixed="false">
+			<sequence>
+				<element name="workerThreads" type="tns:naturalInteger" minOccurs="0"/>
+				<element name="documentDatabaseConnection" type="tns:documentDatabaseConnection"/>
+				<element name="knowledgeBaseConnection" type="tns:knowledgeBaseConnection"/>
+				<element name="luceneIndex" type="tns:luceneIndex"/>
+				<element name="behavior" type="tns:behavior"/>
+				<choice>
+					<element name="telegramBotFrontend" type="tns:telegramBotFrontend"/>
+					<element name="commandLineInterfaceFrontend" type="tns:commandLineInterfaceFrontend"/>
+				</choice>
+			</sequence>
+			<attribute name="version" type="tns:naturalInteger" use="required">
+				<annotation>
+					<documentation>The version of the configuration file, always 1. This value is ignored for now, but it is reserved to be used in the future.</documentation>
+				</annotation>
+			</attribute>
+		</complexType>
+	</element>
+
+	<complexType name="documentDatabaseConnection">
+		<annotation>
+			<documentation>The information needed to connect to a relational database that contains documents related with the topic, as specified by TextProc.</documentation>
+		</annotation>
+		<sequence>
+			<element name="driver" type="tns:nonEmptyString">
+				<annotation>
+					<documentation>The JDBC driver class to use.</documentation>
+				</annotation>
+			</element>
+			<element name="url" type="anyURI"/>
+			<element name="username" type="string" minOccurs="0"/>
+			<element name="password" type="string" minOccurs="0"/>
+		</sequence>
+	</complexType>
+
+	<complexType name="knowledgeBaseConnection">
+		<annotation>
+			<documentation>The information needed to open and use the knowledge base, as created by TextProc.</documentation>
+		</annotation>
+		<sequence>
+			<element name="directory" type="tns:nonEmptyString"/>
+		</sequence>
+	</complexType>
+
+	<complexType name="luceneIndex">
+		<annotation>
+			<documentation>The information needed to open and use the Lucene index for the database documents, as created by TextProc.</documentation>
+		</annotation>
+		<sequence>
+			<element name="directory" type="tns:nonEmptyString"/>
+		</sequence>
+	</complexType>
+
+	<complexType name="behavior">
+		<annotation>
+			<documentation>These settings control how the bot behaves to choose a response.</documentation>
+		</annotation>
+		<sequence>
+			<element name="responseBias">
+				<annotation>
+					<documentation>The bias shown by the bot towards vaccination topics.</documentation>
+				</annotation>
+				<simpleType>
+					<restriction base="string">
+						<enumeration value="positive">
+							<annotation>
+								<documentation>The bot will try to select responses that show a positive sentiment towards vaccines.</documentation>
+							</annotation>
+						</enumeration>
+						<enumeration value="negative">
+							<annotation>
+								<documentation>The bot will try to select responses that show a negative sentiment towards vaccines.</documentation>
+							</annotation>
+						</enumeration>
+						<enumeration value="neutral">
+							<annotation>
+								<documentation>The bot will try to select responses that do not show any positive or negative sentiment towards vaccines.</documentation>
+							</annotation>
+						</enumeration>
+						<enumeration value="impartial">
+							<annotation>
+								<documentation>The bot will not take into account the sentiment expressed towards vaccines to select responses.</documentation>
+							</annotation>
+						</enumeration>
+					</restriction>
+				</simpleType>
+			</element>
+		</sequence>
+	</complexType>
+
+	<complexType name="telegramBotFrontend">
+		<annotation>
+			<documentation>The Telegram bot front-end, which allows users to interact with the bot via Telegram chats.</documentation>
+		</annotation>
+		<sequence>
+			<element name="userName" type="tns:nonEmptyString"/>
+			<element name="token" type="tns:nonEmptyString"/>
+			<element name="maxAsyncThreads" type="tns:naturalInteger" minOccurs="0"/>
+			<element name="maxWebhookConnections" type="tns:naturalInteger" minOccurs="0"/>
+			<element name="telegramBaseUrl" type="tns:httpsURL" minOccurs="0"/>
+			<choice>
+				<element name="longPollingUpdate" type="tns:longPollingUpdate"/>
+				<element name="webhookUpdate" type="tns:webhookUpdate"/>
+			</choice>
+		</sequence>
+	</complexType>
+
+	<!-- Empty on purpose for now -->
+	<complexType name="commandLineInterfaceFrontend">
+		<annotation>
+			<documentation>The command line interface front-end, mainly useful for debug and development purposes.</documentation>
+		</annotation>
+	</complexType>
+
+	<!-- Empty on purpose for now -->
+	<complexType name="longPollingUpdate">
+		<annotation>
+			<documentation>Update reception method for Telegram bots based on long polling. This method may have lower performance, but it is easier to set up and transverses firewalls more easily. See: https://en.wikipedia.org/wiki/Push_technology#Long_polling</documentation>
+		</annotation>
+	</complexType>
+
+	<complexType name="webhookUpdate">
+		<annotation>
+			<documentation>Update reception method for Telegram bots based on webhooks, which are glorified incoming HTTPS requests. See: https://core.telegram.org/bots/api#setwebhook</documentation>
+		</annotation>
+		<sequence>
+			<element name="externalUrl" type="tns:httpsURL"/>
+			<element name="internalUrl" type="tns:httpsURL"/>
+			<element name="botPath" type="tns:nonEmptyString"/>
+			<element name="certificateStorePath" type="tns:nonEmptyString" minOccurs="0"/>
+			<element name="certificateStorePassword" type="tns:nonEmptyString" minOccurs="0"/>
+			<element name="publicKeyPath" type="tns:nonEmptyString" minOccurs="0"/>
+		</sequence>
+	</complexType>
+
+	<simpleType name="httpsURL">
+		<restriction base="anyURI">
+			<pattern value="https://.+"/>
+		</restriction>
+	</simpleType>
+
+	<simpleType name="nonEmptyURI">
+		<restriction base="anyURI">
+			<minLength value="1"/>
+		</restriction>
+	</simpleType>
+
+	<simpleType name="nonEmptyString">
+		<restriction base="string">
+			<minLength value="1"/>
+		</restriction>
+	</simpleType>
+
+	<simpleType name="naturalInteger">
+		<restriction base="nonNegativeInteger">
+			<minInclusive value="1"/>
+			<maxInclusive value="2147483647"/> <!-- 2^31 - 1 -->
+		</restriction>
+	</simpleType>
+</schema>

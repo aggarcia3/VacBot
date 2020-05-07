@@ -361,3 +361,8 @@ $RECYCLE.BIN/
 
 # Maven package artifacts
 dist/
+
+# Cryptographic secrets
+vacbot.jks
+vacbot.pem
+environment.sh

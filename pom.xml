@@ -10,6 +10,11 @@
 	<packaging>pom</packaging>
 	<name>VacBotApplication</name>
 
+	<ciManagement>
+		<system>GitHub Actions</system>
+		<url>https://github.com/aggarcia3/VacBot/actions</url>
+	</ciManagement>
+
 	<scm>
 		<url>https://github.com/aggarcia3/VacBot</url>
 	</scm>
@@ -72,10 +77,6 @@
 						<groupId>javax.xml.bind</groupId>
 						<artifactId>jaxb-api</artifactId>
 					</exclusion>
-					<exclusion>
-						<groupId>javax.activation</groupId>
-						<artifactId>javax.activation-api</artifactId>
-					</exclusion>
 				</exclusions>
 			</dependency>
 			<dependency>
@@ -87,6 +88,13 @@
 				<groupId>org.glassfish.jaxb</groupId>
 				<artifactId>jaxb-runtime</artifactId>
 				<version>3.0.0-M2</version>
+			</dependency>
+			<dependency>
+				<groupId>com.sun.activation</groupId>
+				<artifactId>jakarta.activation</artifactId>
+				<version>2.0.0-RC3</version>
+				<!-- Declare as compile time dependency for jaxb-runtime -->
+				<scope>compile</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.xerial</groupId>
@@ -108,12 +116,12 @@
 						<artifactId>javax.activation-api</artifactId>
 					</exclusion>
 					<exclusion>
-						<groupId>javax.xml.bind</groupId>
-						<artifactId>jaxb-api</artifactId>
+						<groupId>com.sun.xml.bind</groupId>
+						<artifactId>jaxb-impl</artifactId>
 					</exclusion>
 					<exclusion>
 						<groupId>com.sun.xml.bind</groupId>
-						<artifactId>jaxb-impl</artifactId>
+						<artifactId>jaxb-core</artifactId>
 					</exclusion>
 					<exclusion>
 						<groupId>xml-apis</groupId>
@@ -143,8 +151,8 @@
 				<artifactId>jena-tdb2</artifactId>
 				<version>3.14.0</version>
 				<exclusions>
+					<!-- Exclude artifact that usually fails to resolve -->
 					<exclusion>
-						<!-- Exclude artifact that usually fails to resolve -->
 						<groupId>com.github.jsonld-java</groupId>
 						<artifactId>jsonld-java</artifactId>
 					</exclusion>
@@ -216,12 +224,10 @@
 						<groupId>com.sun.activation</groupId>
 						<artifactId>jakarta.activation</artifactId>
 					</exclusion>
-					<!-- Use the version of the API specified above -->
 					<exclusion>
-						<groupId>jakarta.xml.bind</groupId>
-						<artifactId>jakarta.xml.bind-api</artifactId>
+						<groupId>jakarta.activation</groupId>
+						<artifactId>jakarta.activation-api</artifactId>
 					</exclusion>
-					<!-- Activation API provided by others -->
 					<exclusion>
 						<groupId>com.google.code.findbugs</groupId>
 						<artifactId>jsr305</artifactId>
@@ -241,10 +247,6 @@
 						<groupId>javax.inject</groupId>
 						<artifactId>javax.inject</artifactId>
 					</exclusion>
-					<exclusion>
-						<groupId>jakarta.activation</groupId>
-						<artifactId>jakarta.activation-api</artifactId>
-					</exclusion>
 				</exclusions>
 			</dependency>
 			<!-- Needed by telegrambots -->
@@ -252,6 +254,13 @@
 				<groupId>com.fasterxml.jackson.jaxrs</groupId>
 				<artifactId>jackson-jaxrs-json-provider</artifactId>
 				<version>2.11.0</version>
+			</dependency>
+			<!-- A binding for SLF4J -->
+			<dependency>
+				<groupId>org.slf4j</groupId>
+				<artifactId>slf4j-jdk14</artifactId>
+				<version>1.7.30</version>
+				<scope>runtime</scope>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

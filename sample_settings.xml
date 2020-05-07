@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://vacbot.sing.esei.uvigo.es/Settings"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://vacbot.sing.esei.uvigo.es/Settings VacBotMain/src/main/resources/settings.xsd"
+	version="1">
+
+	<documentDatabaseConnection>
+		<driver>org.sqlite.JDBC</driver>
+		<url>jdbc:sqlite:../corpus.db</url>
+	</documentDatabaseConnection>
+
+	<knowledgeBaseConnection>
+		<directory>../knowledge_base</directory>
+	</knowledgeBaseConnection>
+
+	<luceneIndex>
+		<directory>../lucene_index</directory>
+	</luceneIndex>
+
+	<behavior>
+		<responseBias>impartial</responseBias>
+	</behavior>
+
+	<telegramBotFrontend>
+		<userName>TheVacBot</userName>
+		<token>env:TOKEN</token>
+		<!--
+			Receive updates (new messages) via incoming HTTPS POST requests (webhooks).
+			For more details, see https://core.telegram.org/bots/webhooks and
+			https://core.telegram.org/bots/self-signed#java-keystore
+		-->
+		<webhookUpdate>
+			<!-- The URL where Telegram servers will send updates -->
+			<externalUrl>https://alejandropc.sytes.net:8443</externalUrl>
+			<!-- The URL for the internal server to bind to -->
+			<internalUrl>https://0.0.0.0:8443</internalUrl>
+			<!-- The HTTP URL path component that the internal server will bind this bot to -->
+			<botPath>TheVacBot</botPath>
+			<!-- The Java KeyStore where the certificate to use for HTTPS server authentication resides -->
+			<certificateStorePath>vacbot.jks</certificateStorePath>
+			<!-- The password for the Java KeyStore -->
+			<certificateStorePassword>p@ssw0rd</certificateStorePassword>
+			<!--
+				The public key to send to the Telegram servers, in case that the certificate is not
+				trusted by Telegram (i.e. self-signed or signed by a strange CA)
+			-->
+			<publicKeyPath>vacbot.pem</publicKeyPath>
+		</webhookUpdate>
+		<!--
+			As a simpler to set up alternative (but less efficient), updates can also received
+			by long polling, which sends requests to Telegram servers periodically to retrieve
+			updates:
+		-->
+		<!--<longPollingUpdate/>-->
+	</telegramBotFrontend>
+	<!-- Alternatively, a CLI frontend can be used -->
+	<!--<commandLineInterfaceFrontend/>-->
+</settings>
