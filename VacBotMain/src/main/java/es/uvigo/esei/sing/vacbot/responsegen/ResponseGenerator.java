@@ -91,8 +91,8 @@ import edu.stanford.nlp.ling.SentenceUtils;
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class ResponseGenerator {
-	private static final String DOCUMENT_ID_FIELD = "id";
-	private static final Set<String> DOCUMENT_ID_FIELD_SET = Set.of(DOCUMENT_ID_FIELD);
+	private static final String LUCENE_DOCUMENT_ID_FIELD = "id";
+	private static final Set<String> LUCENE_DOCUMENT_FIELDS_SET = Set.of(LUCENE_DOCUMENT_ID_FIELD);
 
 	/**
 	 * The non-commital responses the bot will say, in case a more appropriate
@@ -486,16 +486,27 @@ public final class ResponseGenerator {
 
 		// The document retrieval was only successful if we have at least one result
 		if (results.scoreDocs.length > 0) {
-			// Get the full document text
+			// Get the Lucene document ID (not the same as the actual ID of the indexed entity),
+			// the document entity type and its text
+			final int documentId =
+				results.scoreDocs[ThreadLocalRandom.current().nextInt(results.scoreDocs.length)].doc;
+
+			// We leverage the storage of term vectors per attribute to distinguish
+			// between document types, without the need of rebuilding indexes and
+			// storing any metadata about the document type. This feels smart
+			final Class<? extends Document> documentType =
+				indexSearcher.getIndexReader().getTermVector(documentId, "title") != null ?
+				OriginalDocumentWithTitle.class : OriginalDocument.class;
+
 			final String documentText = getDocumentText(
 				indexSearcher.doc(
-					results.scoreDocs[ThreadLocalRandom.current().nextInt(results.scoreDocs.length)].doc,
-					DOCUMENT_ID_FIELD_SET
-				).getField(DOCUMENT_ID_FIELD).numericValue().intValue(), // DOCUMENT_ID_FIELD is present so no NPE
-				OriginalDocument.class, settings
+					documentId,
+					LUCENE_DOCUMENT_FIELDS_SET
+				).getField(LUCENE_DOCUMENT_ID_FIELD).numericValue().intValue(), // DOCUMENT_ID_FIELD is present so no NPE
+				documentType, settings
 			);
 
-			// Now split it in sentences
+			// Now split its text in sentences
 			final Annotation documentTextAnnotation = new Annotation(documentText);
 
 			sentenceSplitPipeline.annotate(documentTextAnnotation);

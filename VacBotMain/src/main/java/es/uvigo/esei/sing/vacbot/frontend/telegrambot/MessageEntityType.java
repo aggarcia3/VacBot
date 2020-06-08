@@ -63,8 +63,8 @@ public enum MessageEntityType {
 			super.adjustEntityInText(messageText, entity);
 
 			if (entity.getText().startsWith("/start")) {
-				// Discard anything else from the text
-				return "/start";
+				// Consider this command as a salutation
+				return "Hello";
 			} else {
 				// Remove the command
 				return MENTION.adjustEntityInText(messageText, entity);

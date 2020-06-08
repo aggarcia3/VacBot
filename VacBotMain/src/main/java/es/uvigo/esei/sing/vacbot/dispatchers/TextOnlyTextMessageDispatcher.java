@@ -36,13 +36,13 @@ public final class TextOnlyTextMessageDispatcher extends TextMessageDispatcher<T
 	@Override
 	protected TextOnlyTextMessage computeResponse(final TextOnlyTextMessage message) throws ResponseGenerationException {
 		final String messageText = message.getText();
-		final String responseText;
+		String responseText = null;
 
 		if (ResponseGenerator.hasResponseTo(messageText)) {
 			notifyForthcomingResponse(null);
+			responseText = ResponseGenerator.generateResponseTo(messageText, settings);
 		}
 
-		responseText = ResponseGenerator.generateResponseTo(messageText, settings);
 		return responseText != null ? new TextOnlyTextMessage(responseText) : null;
 	}
 }

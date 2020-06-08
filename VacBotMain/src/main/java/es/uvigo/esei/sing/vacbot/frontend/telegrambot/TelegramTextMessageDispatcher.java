@@ -77,16 +77,16 @@ public final class TelegramTextMessageDispatcher extends TextMessageDispatcher<T
 
 			if (ResponseGenerator.hasResponseTo(messageText)) {
 				notifyForthcomingResponse(chat);
-			}
 
-			responseText = ResponseGenerator.generateResponseTo(messageText, settings);
-			if (responseText != null) {
-				responseMessage = new TelegramTextMessage(
-					responseText,
-					Integer.MIN_VALUE, null, null, chat,
-					null, null, null, null, null, message.getThisMessage(),
-					null, null, null
-				);
+				responseText = ResponseGenerator.generateResponseTo(messageText, settings);
+				if (responseText != null) {
+					responseMessage = new TelegramTextMessage(
+						responseText,
+						Integer.MIN_VALUE, null, null, chat,
+						null, null, null, null, null, message.getThisMessage(),
+						null, null, null
+					);
+				}
 			}
 		}
 
