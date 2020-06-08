@@ -2,8 +2,6 @@
 
 package es.uvigo.esei.sing.vacbot.frontend;
 
-import java.io.Closeable;
-
 /**
  * The contract that any front-end interface available to VacBot must implement.
  * <p>
@@ -18,8 +16,10 @@ import java.io.Closeable;
  * @author Alejandro González García
  * @param <T> The concrete type of text messages that the front-end interface
  *            works with.
+ * @param <U> The forthcoming notification data type, to be used with
+ *            {@link #notifyForthcomingResponse(U)}.
  */
-public interface FrontendInterface<T extends TextMessage> extends Closeable {
+public interface FrontendInterface<T extends TextMessage, U> extends AutoCloseable {
 	/**
 	 * Retrieves the next message that the application should compute a response to.
 	 * <p>
@@ -39,19 +39,6 @@ public interface FrontendInterface<T extends TextMessage> extends Closeable {
 	public T awaitNextMessage() throws FrontendCommunicationException, InterruptedException;
 
 	/**
-	 * Checks whether there are pending messages to compute a response to. In other
-	 * words, checks whether a call to {@link #awaitNextMessage()} would not block
-	 * because there are messages to process.
-	 *
-	 * @return True if and only if there are pending messages to process, false in
-	 *         other case.
-	 * @throws FrontendCommunicationException If the front-end reported an
-	 *                                        unrecoverable error while performing
-	 *                                        the operation.
-	 */
-	public boolean hasPendingMessages() throws FrontendCommunicationException;
-
-	/**
 	 * Sends a text message to the front-end interface represented by this object,
 	 * so it is visible to the end-user(s).
 	 *
@@ -64,11 +51,41 @@ public interface FrontendInterface<T extends TextMessage> extends Closeable {
 	public void sendMessage(final T message) throws FrontendCommunicationException;
 
 	/**
-	 * Returns the concrete type of text messages that this front-end interface
-	 * works with. This method is mainly useful for downcasting in a type-safe
-	 * manner.
+	 * Checks whether the specified message is meant to elicit a response from the
+	 * bot, using a front-end specific algorithm.
 	 *
-	 * @return The specified type.
+	 * @param message The message to check.
+	 * @return True if and only if the message is for the bot, false otherwise.
+	 * @throws FrontendCommunicationException If the front-end reported an
+	 *                                        unrecoverable error while performing
+	 *                                        the operation.
+	 * @throws IllegalArgumentException       If {@code message} is {@code null}.
 	 */
-	public Class<T> getTextMessageType();
+	public boolean isMessageForBot(final T message) throws FrontendCommunicationException;
+
+	/**
+	 * Sends a notification to the end-user about a forthcoming response from the
+	 * bot.
+	 * <p>
+	 * This notification is meant to improve user feedback, managing its
+	 * expectations in the case that the response takes some time to compute. It
+	 * must not be used to send information necessary for the user to interact with
+	 * the bot.
+	 * </p>
+	 *
+	 * @param notificationData A front-end interface specific object which contains
+	 *                         the needed data or logic to generate the
+	 *                         notification.
+	 * @throws FrontendCommunicationException If the front-end reported an
+	 *                                        unrecoverable error while performing
+	 *                                        the operation.
+	 * @throws IllegalArgumentException       If {@code notificationData} doesn't
+	 *                                        satisfy a front-end specific predicate
+	 *                                        (like, for instance, not being
+	 *                                        {@code null}).
+	 * @implNote The default implementation of this method does nothing.
+	 */
+	public default void notifyForthcomingResponse(final U notificationData) throws FrontendCommunicationException {
+		// Do nothing
+	}
 }

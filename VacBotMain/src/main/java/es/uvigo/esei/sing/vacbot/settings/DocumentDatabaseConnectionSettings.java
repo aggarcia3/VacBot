@@ -2,6 +2,17 @@
 
 package es.uvigo.esei.sing.vacbot.settings;
 
+import java.util.Map;
+
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
+import javax.persistence.PersistenceException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import jakarta.xml.bind.Unmarshaller;
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import jakarta.xml.bind.annotation.XmlValue;
@@ -23,8 +34,10 @@ import lombok.ToString;
  */
 @XmlRootElement(name = "documentDatabaseConnection")
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-@ToString
-public final class DocumentDatabaseConnectionSettings {
+@ToString(exclude = "entityManagerFactory")
+public final class DocumentDatabaseConnectionSettings implements AutoCloseable {
+	private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDatabaseConnectionSettings.class);
+
 	/**
 	 * The class of the JDBC driver to use.
 	 */
@@ -45,16 +58,76 @@ public final class DocumentDatabaseConnectionSettings {
 	 * field be {@code null}, if no username is needed.
 	 */
 	@Getter
-	@XmlElement(name = "username", required = true)
-	private final String connectionUsername = null;
+	@XmlElement(name = "username")
+	private final String connectionUsername = "";
 
 	/**
 	 * The connection password. This element might be missing, and therefore this
 	 * field be {@code null}, if no password is needed.
 	 */
 	@Getter
-	@XmlElement(name = "password", required = true)
-	private final String connectionPassword = null;
+	@XmlElement(name = "password")
+	private final String connectionPassword = "";
+
+	/**
+	 * The factory of JPA entity managers that will be used to access entities in
+	 * the relational database.
+	 */
+	private EntityManagerFactory entityManagerFactory = null;
+
+	/**
+	 * Opens a connection to the database configured by these settings if necessary
+	 * and returns a new, possibly non thread-safe JPA {@link EntityManager} for it,
+	 * which the caller should close as soon as it finishes its work. If the
+	 * connection was already opened, it will not be opened again, but a new
+	 * {@link EntityManager} instance will be created nevertheless.
+	 * <p>
+	 * This method is not thread-safe when called for a first time: the connection
+	 * isn't updated with happens-before semantics. However, after this first call,
+	 * it is safe to execute it from different threads concurrently.
+	 * </p>
+	 *
+	 * @return The described {@link EntityManager} object.
+	 * @throws PersistenceException If any error occurs during the instantiation of
+	 *                              the entity manager factory.
+	 */
+	public EntityManager openEntityManager() {
+		if (entityManagerFactory == null) {
+			LOGGER.info("Creating entity manager factory for database access...");
+
+			entityManagerFactory = Persistence.createEntityManagerFactory(
+				"VacBotPersistence", Map.of(
+					// Standard properties as of JPA 2.2. See page 371 of the specification
+					"javax.persistence.jdbc.driver", jdbcDriverClass.getCanonicalName(),
+					"javax.persistence.jdbc.url", connectionUrl,
+					"javax.persistence.jdbc.user", connectionUsername,
+					"javax.persistence.jdbc.password", connectionPassword
+				)
+			);
+
+			LOGGER.info(
+				"Entity manager factory created, connection to the document database established"
+			);
+		}
+
+		return entityManagerFactory.createEntityManager();
+	}
+
+	/**
+	 * Opens the entity manager factory just after the database connection settings
+	 * are unmarshalled from the configuration file.
+	 * <p>
+	 * Any exception thrown by this method will abort the unmarshalling process as
+	 * if a parse error occurred.
+	 * </p>
+	 *
+	 * @param unmarshaller The unmarshaller that is unmarshalling this class.
+	 * @param parent       The parent object. It can be {@code null}.
+	 */
+	@SuppressWarnings("unused") // Called by JAXB
+	private void afterUnmarshal(final Unmarshaller unmarshaller, final Object parent) {
+		openEntityManager();
+	}
 
 	/**
 	 * A helper class to map a JDBC driver class string value wrapped in a element
@@ -94,6 +167,13 @@ public final class DocumentDatabaseConnectionSettings {
 		@Override
 		public JDBCDriverSetting marshal(@NonNull final Class<?> v) throws Exception {
 			return new JDBCDriverSetting(v.getName());
+		}
+	}
+
+	@Override
+	public void close() throws Exception {
+		if (entityManagerFactory != null) {
+			entityManagerFactory.close();
 		}
 	}
 }

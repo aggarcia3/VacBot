@@ -2,14 +2,25 @@
 
 package es.uvigo.esei.sing.vacbot.settings;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 
+import org.apache.jena.query.Dataset;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.tdb2.TDB2Factory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import jakarta.xml.bind.Unmarshaller;
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlRootElement;
+import jakarta.xml.bind.annotation.XmlValue;
+import jakarta.xml.bind.annotation.adapters.XmlAdapter;
 import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.ToString;
 
@@ -21,14 +32,167 @@ import lombok.ToString;
  * @see VacBotSettings
  */
 @XmlRootElement(name = "knowledgeBaseConnection")
-@NoArgsConstructor(access = AccessLevel.PRIVATE)
-@ToString
-public final class KnowledgeBaseConnectionSettings {
+@ToString(exclude = "connection")
+public final class KnowledgeBaseConnectionSettings implements AutoCloseable {
+	private static final Logger LOGGER = LoggerFactory.getLogger(KnowledgeBaseConnectionSettings.class);
+
 	/**
-	 * The directory where the KB resides.
+	 * The directory where the Jena dataset of the KB resides.
 	 */
 	@Getter @NonNull
 	@XmlElement(name = "directory", required = true)
 	@XmlJavaTypeAdapter(CommonJAXBAdapters.DirectoryAdapter.class)
 	private final Path directory = null;
+
+	/**
+	 * The base model URI of the KB in the Jena dataset.
+	 */
+	@Getter @NonNull
+	@XmlElement(name = "baseModelURI")
+	@XmlJavaTypeAdapter(BaseUriAdapter.class)
+	private final URI baseModelUri;
+
+	/**
+	 * The actual connection to the Jena dataset.
+	 */
+	private Connection connection = null;
+
+	/**
+	 * Initializes fields before JAXB unmarshalls this object.
+	 */
+	private KnowledgeBaseConnectionSettings() {
+		try {
+			// TODO Use a valid IRI
+			this.baseModelUri = new URI("vacbot-kb:/");
+		} catch (final URISyntaxException exc) {
+			// This doesn't happen if the hardcoded constant is ok
+			throw new AssertionError(exc);
+		}
+	}
+
+	/**
+	 * Establishes a connection to the knowledge base if necessary and returns it.
+	 * If a connection was already established, it will be returned in subsequent
+	 * invocations of this method.
+	 * <p>
+	 * This method is not thread-safe: if executed concurrently by several threads,
+	 * the connection isn't updated with happens-before semantics.
+	 * </p>
+	 *
+	 * @return The established knowledge base connection to a Jena TDB2 dataset.
+	 * @throws IllegalStateException If the connection to the dataset couldn't be
+	 *                               established.
+	 */
+	public Connection connect() {
+		if (connection == null) {
+			try {
+				LOGGER.info("Connecting to the Jena TDB2 KB...");
+
+				final Dataset dataset = TDB2Factory.connectDataset(directory.toString());
+				final Model model = baseModelUri != null ?
+					dataset.getNamedModel(baseModelUri.toASCIIString()) : dataset.getDefaultModel();
+
+				connection = new Connection(dataset, model);
+
+				LOGGER.info("Connection to the Jena TDB2 KB established");
+			} catch (final Exception exc) {
+				throw new IllegalStateException("Couldn't connect to the knowledge base", exc);
+			}
+		}
+
+		return connection;
+	}
+
+	/**
+	 * Initializes the connection to the knowledge base just after the knowledge
+	 * base settings are unmarshalled from the configuration file.
+	 * <p>
+	 * Any exception thrown by this method will abort the unmarshalling process as
+	 * if a parse error occurred.
+	 * </p>
+	 *
+	 * @param unmarshaller The unmarshaller that is unmarshalling this class.
+	 * @param parent       The parent object. It can be {@code null}.
+	 */
+	@SuppressWarnings("unused") // Called by JAXB
+	private void afterUnmarshal(final Unmarshaller unmarshaller, final Object parent) {
+		connect();
+	}
+
+	/**
+	 * A XML type adapter to map {@link BaseUriSetting}, a POJO representing a
+	 * {@code <baseModelURI>} element, to its value.
+	 *
+	 * @author Alejandro González García
+	 */
+	static final class BaseUriAdapter extends XmlAdapter<BaseUriSetting, URI> {
+		@Override
+		public URI unmarshal(@NonNull final BaseUriSetting v) throws Exception {
+			return new URI(v.getBaseUriString());
+		}
+
+		@Override
+		public BaseUriSetting marshal(@NonNull final URI v) throws Exception {
+			return new BaseUriSetting(v.toASCIIString());
+		}
+	}
+
+	/**
+	 * A helper class to map a base URI string value wrapped in a element to a
+	 * string.
+	 *
+	 * @author Alejandro González García
+	 */
+	@XmlRootElement(name = "baseModelURI")
+	private static final class BaseUriSetting {
+		@XmlValue @Getter
+		private final String baseUriString;
+
+		private BaseUriSetting() {
+			this.baseUriString = null;
+		}
+
+		private BaseUriSetting(@NonNull final String baseURIString) {
+			this.baseUriString = baseURIString;
+		}
+	}
+
+	/**
+	 * Represents a connection to a Jena TDB2 dataset containing a knowledge base.
+	 *
+	 * @author Alejandro González García
+	 */
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
+	public static final class Connection {
+		@Getter
+		private final Dataset dataset;
+		@Getter
+		private final Model model;
+	}
+
+	@Override
+	public void close() throws Exception {
+		if (connection != null) {
+			Exception thrownException = null;
+
+			try {
+				connection.model.close();
+			} catch (final Exception exc) {
+				thrownException = exc;
+			}
+
+			try {
+				connection.dataset.close();
+			} catch (final Exception exc) {
+				if (thrownException != null) {
+					exc.addSuppressed(thrownException);
+				}
+				thrownException = exc;
+			}
+
+			if (thrownException != null) {
+				throw thrownException;
+			}
+		}
+	}
 }

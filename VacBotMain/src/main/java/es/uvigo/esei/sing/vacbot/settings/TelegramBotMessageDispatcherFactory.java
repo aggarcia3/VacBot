@@ -3,10 +3,12 @@
 package es.uvigo.esei.sing.vacbot.settings;
 
 import org.telegram.telegrambots.meta.ApiConstants;
+import org.telegram.telegrambots.meta.api.objects.Chat;
 
+import es.uvigo.esei.sing.vacbot.dispatchers.TextMessageDispatcher;
 import es.uvigo.esei.sing.vacbot.frontend.FrontendCommunicationException;
-import es.uvigo.esei.sing.vacbot.frontend.FrontendInterface;
 import es.uvigo.esei.sing.vacbot.frontend.telegrambot.TelegramTextMessage;
+import es.uvigo.esei.sing.vacbot.frontend.telegrambot.TelegramTextMessageDispatcher;
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlElements;
 import jakarta.xml.bind.annotation.XmlRootElement;
@@ -28,7 +30,7 @@ import lombok.ToString;
 @XmlRootElement(name = "telegramBotFrontend")
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @ToString
-public final class TelegramBotFrontendInterfaceFactory implements FrontendInterfaceFactory<TelegramTextMessage> {
+public final class TelegramBotMessageDispatcherFactory implements MessageDispatcherFactory<TelegramTextMessage, Chat> {
 	/**
 	 * The user name for the chatbot.
 	 */
@@ -74,8 +76,10 @@ public final class TelegramBotFrontendInterfaceFactory implements FrontendInterf
 	private final TelegramBotUpdateReceptionMethodFactory updateReceptionMethodFactory = null;
 
 	@Override
-	public FrontendInterface<TelegramTextMessage> getFrontendInterface() throws FrontendCommunicationException {
-		return updateReceptionMethodFactory.getFrontendInterface(this);
+	public TextMessageDispatcher<TelegramTextMessage, Chat> getTextMessageDispatcher(
+		final VacBotSettings settings
+	) throws FrontendCommunicationException {
+		return new TelegramTextMessageDispatcher(updateReceptionMethodFactory.getFrontendInterface(this), settings);
 	}
 
 	/**

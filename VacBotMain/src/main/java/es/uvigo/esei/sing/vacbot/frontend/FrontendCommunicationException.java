@@ -16,13 +16,6 @@ public final class FrontendCommunicationException extends Exception {
 	private static final long serialVersionUID = 1L;
 
 	/**
-	 * Creates a front-end communication exception without a detail message.
-	 */
-	public FrontendCommunicationException() {
-		super();
-	}
-
-	/**
 	 * Creates a front-end communication exception with the provided detail message.
 	 *
 	 * @param message The detail message for the exception. It can be {@code null}.

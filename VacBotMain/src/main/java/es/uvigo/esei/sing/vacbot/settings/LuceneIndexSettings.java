@@ -2,12 +2,22 @@
 
 package es.uvigo.esei.sing.vacbot.settings;
 
+import java.io.IOException;
 import java.nio.file.Path;
 
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.similarities.BM25Similarity;
+import org.apache.lucene.store.FSDirectory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import jakarta.xml.bind.Unmarshaller;
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
@@ -22,8 +32,10 @@ import lombok.ToString;
  */
 @XmlRootElement(name = "luceneIndex")
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-@ToString
-public final class LuceneIndexSettings {
+@ToString(exclude = "index")
+public final class LuceneIndexSettings implements AutoCloseable {
+	private static final Logger LOGGER = LoggerFactory.getLogger(LuceneIndexSettings.class);
+
 	/**
 	 * The directory where the Lucene index resides.
 	 */
@@ -31,4 +43,99 @@ public final class LuceneIndexSettings {
 	@XmlElement(name = "directory", required = true)
 	@XmlJavaTypeAdapter(CommonJAXBAdapters.DirectoryAdapter.class)
 	private final Path directory = null;
+
+	/**
+	 * The maximum Damerau-Levenshtein distance that will be admitted when searching
+	 * terms.
+	 */
+	@Getter
+	@XmlElement(name = "termFuzzyQueryDistance")
+	private int termFuzzyQueryDistance = 0;
+
+	/**
+	 * The maximum number of results that will be retrieved from the index, and
+	 * that will be considered for generating responses.
+	 */
+	@Getter
+	@XmlElement(name = "maxResults")
+	private int maxResults = 5;
+
+	/**
+	 * The actual Lucene index API object.
+	 */
+	private LuceneIndex index = null;
+
+	/**
+	 * Opens the configured Lucene index if necessary and returns it. If it was
+	 * already opened, the same object will be returned in subsequent invocations of
+	 * this method.
+	 * <p>
+	 * This method is not thread-safe: if executed concurrently by several threads,
+	 * the connection isn't updated with happens-before semantics.
+	 * </p>
+	 *
+	 * @return The opened Lucene index.
+	 * @throws IllegalStateException If the index couldn't be opened.
+	 */
+	public LuceneIndex openIndex() {
+		if (index == null) {
+			try {
+				LOGGER.info("Opening Lucene index...");
+
+				final DirectoryReader directoryReader = DirectoryReader.open(
+					FSDirectory.open(directory)
+				);
+				final IndexSearcher indexSearcher = new IndexSearcher(directoryReader);
+				indexSearcher.setSimilarity(new BM25Similarity()); // The same used by TextProc
+
+				index = new LuceneIndex(directoryReader, indexSearcher);
+
+				LOGGER.info(
+					"Lucene index opened. Documents: {}, index version: {}",
+					directoryReader.numDocs(), directoryReader.getVersion()
+				);
+			} catch (final IOException exc) {
+				throw new IllegalStateException(exc);
+			}
+		}
+
+		return index;
+	}
+
+	/**
+	 * Opens the Lucene document index just after its settings are unmarshalled from
+	 * the configuration file.
+	 * <p>
+	 * Any exception thrown by this method will abort the unmarshalling process as
+	 * if a parse error occurred.
+	 * </p>
+	 *
+	 * @param unmarshaller The unmarshaller that is unmarshalling this class.
+	 * @param parent       The parent object. It can be {@code null}.
+	 */
+	@SuppressWarnings("unused") // Called by JAXB
+	private void afterUnmarshal(final Unmarshaller unmarshaller, final Object parent) {
+		openIndex();
+	}
+
+	/**
+	 * Represents a Lucene index that indexes documents in the format defined by
+	 * TextProc.
+	 *
+	 * @author Alejandro González García
+	 */
+	@AllArgsConstructor(access = AccessLevel.PRIVATE)
+	public static final class LuceneIndex {
+		@Getter
+		private final DirectoryReader directoryReader;
+		@Getter
+		private final IndexSearcher indexSearcher;
+	}
+
+	@Override
+	public void close() throws Exception {
+		if (index != null) {
+			index.directoryReader.close();
+		}
+	}
 }

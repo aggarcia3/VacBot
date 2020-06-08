@@ -26,5 +26,5 @@ public interface TelegramBotUpdateReceptionMethodFactory {
 	 *                                        while communicating with the front-end
 	 *                                        during the operation.
 	 */
-	public TelegramBotFrontendInterface getFrontendInterface(final TelegramBotFrontendInterfaceFactory factory) throws FrontendCommunicationException;
+	public TelegramBotFrontendInterface getFrontendInterface(final TelegramBotMessageDispatcherFactory factory) throws FrontendCommunicationException;
 }

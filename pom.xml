@@ -48,6 +48,7 @@
 	<properties>
 		<vacbot.java.version>11</vacbot.java.version>
 		<vacbot.lombok.version>1.18.12</vacbot.lombok.version>
+		<vacbot.jpa.provider>org.hibernate.jpa.HibernatePersistenceProvider</vacbot.jpa.provider>
 	</properties>
 
 	<repositories>
@@ -88,6 +89,12 @@
 				<groupId>org.glassfish.jaxb</groupId>
 				<artifactId>jaxb-runtime</artifactId>
 				<version>3.0.0-M2</version>
+			</dependency>
+			<dependency>
+				<groupId>jakarta.ws.rs</groupId>
+				<artifactId>jakarta.ws.rs-api</artifactId>
+				<!-- 3.0.0-M1 introduces changes that break telegrambots -->
+				<version>2.1.6</version>
 			</dependency>
 			<dependency>
 				<groupId>com.sun.activation</groupId>
@@ -144,6 +151,19 @@
 						<groupId>org.ejml</groupId>
 						<artifactId>ejml-simple</artifactId>
 					</exclusion>
+					<!-- Old Lucene versions -->
+					<exclusion>
+						<groupId>org.apache.lucene</groupId>
+						<artifactId>lucene-core</artifactId>
+					</exclusion>
+					<exclusion>
+						<groupId>org.apache.lucene</groupId>
+						<artifactId>lucene-queryparser</artifactId>
+					</exclusion>
+					<exclusion>
+						<groupId>org.apache.lucene</groupId>
+						<artifactId>lucene-analyzers-common</artifactId>
+					</exclusion>
 				</exclusions>
 			</dependency>
 			<dependency>
@@ -195,7 +215,7 @@
 			<dependency>
 				<groupId>es.uvigo.esei.sing</groupId>
 				<artifactId>lucene-shaded</artifactId>
-				<version>8.5.1-SNAPSHOT</version>
+				<version>8.5.1-SNAPSHOT-2</version>
 			</dependency>
 			<dependency>
 				<groupId>es.uvigo.esei.sing</groupId>
@@ -261,6 +281,27 @@
 				<artifactId>slf4j-jdk14</artifactId>
 				<version>1.7.30</version>
 				<scope>runtime</scope>
+			</dependency>
+			<dependency>
+				<groupId>com.github.lalyos</groupId>
+				<artifactId>jfiglet</artifactId>
+				<version>0.0.8</version>
+			</dependency>
+			<dependency>
+				<groupId>com.beust</groupId>
+				<artifactId>jcommander</artifactId>
+				<version>1.78</version>
+			</dependency>
+			<dependency>
+				<groupId>com.google.guava</groupId>
+				<artifactId>guava</artifactId>
+				<version>29.0-jre</version>
+				<exclusions>
+					<exclusion>
+						<groupId>com.google.code.findbugs</groupId>
+						<artifactId>jsr305</artifactId>
+					</exclusion>
+				</exclusions>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

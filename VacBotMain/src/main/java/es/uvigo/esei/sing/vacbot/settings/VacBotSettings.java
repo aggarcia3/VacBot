@@ -15,10 +15,8 @@ import lombok.ToString;
 /**
  * Holds all the user-provided configuration options for VacBot.
  * <p>
- * The no-arguments constructor is meant to be used by JAXB only, as it
- * initializes fields to {@code null} values, which without further action will
- * remain {@code null} and break the contract that the fields of this class are
- * initialized to non-null values.
+ * This class is meant to be instantiated by client code via
+ * {@link SettingsFacade}.
  * </p>
  *
  * @author Alejandro González García
@@ -26,7 +24,7 @@ import lombok.ToString;
 @XmlRootElement(name = "settings")
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @ToString
-public final class VacBotSettings {
+public final class VacBotSettings implements AutoCloseable {
 	/**
 	 * The number of threads that will be processing responses to incoming text
 	 * messages.
@@ -34,6 +32,14 @@ public final class VacBotSettings {
 	@Getter
 	@XmlElement(name = "workerThreads")
 	private final int workerThreads = Runtime.getRuntime().availableProcessors();
+
+	/**
+	 * The parameters to pass to NLP algorithms.
+	 */
+	@Getter
+	@XmlElement(name = "nlpSettings")
+	private final NaturalLanguageProcessingSettings naturalLanguageProcessingSettings =
+		NaturalLanguageProcessingSettings.defaultSettings();
 
 	/**
 	 * The relational document database settings.
@@ -64,12 +70,52 @@ public final class VacBotSettings {
 	private final BehaviorSettings behaviorSettings = null;
 
 	/**
-	 * Parameters for determining the front-end interface to use.
+	 * Parameters for determining the front-end interface, and therefore text
+	 * message dispatcher, to use.
 	 */
 	@Getter @NonNull
 	@XmlElements({
-		@XmlElement(name = "telegramBotFrontend", type = TelegramBotFrontendInterfaceFactory.class),
-		@XmlElement(name = "commandLineInterfaceFrontend", type = CommandLineInterfaceFrontendInterfaceFactory.class)
+		@XmlElement(name = "telegramBotFrontend", type = TelegramBotMessageDispatcherFactory.class),
+		@XmlElement(name = "commandLineInterfaceFrontend", type = CommandLineInterfaceDispatcherFactory.class)
 	})
-	private final FrontendInterfaceFactory<? extends TextMessage> frontendInterfaceFactory = null;
+	private final MessageDispatcherFactory<? extends TextMessage, ? extends Object> messageDispatcherFactory = null;
+
+	@Override
+	public void close() throws Exception {
+		Exception thrownException = null;
+
+		if (documentDatabaseSettings != null) {
+			try {
+				documentDatabaseSettings.close();
+			} catch (final Exception exc) {
+				thrownException = exc;
+			}
+		}
+
+		if (knowledgeBaseSettings != null) {
+			try {
+				knowledgeBaseSettings.close();
+			} catch (final Exception exc) {
+				if (thrownException != null) {
+					exc.addSuppressed(thrownException);
+				}
+				thrownException = exc;
+			}
+		}
+
+		if (luceneIndexSettings != null) {
+			try {
+				luceneIndexSettings.close();
+			} catch (final Exception exc) {
+				if (thrownException != null) {
+					exc.addSuppressed(thrownException);
+				}
+				thrownException = exc;
+			}
+		}
+
+		if (thrownException != null) {
+			throw thrownException;
+		}
+	}
 }

@@ -19,7 +19,7 @@ import lombok.NonNull;
  *
  * @author Alejandro González García
  */
-public final class CommandLineFrontendInterface implements FrontendInterface<TextOnlyTextMessage> {
+public final class CommandLineFrontendInterface implements FrontendInterface<TextOnlyTextMessage, Void> {
 	private final Console tty = System.console();
 	private final BufferedReader stdin = tty == null ? new BufferedReader(new InputStreamReader(System.in)) : null;
 
@@ -30,7 +30,6 @@ public final class CommandLineFrontendInterface implements FrontendInterface<Tex
 			if (tty == null) {
 				messageText = stdin.readLine();
 			} else {
-				System.out.print("> ");
 				messageText = tty.readLine();
 			}
 
@@ -41,27 +40,17 @@ public final class CommandLineFrontendInterface implements FrontendInterface<Tex
 	}
 
 	@Override
-	public boolean hasPendingMessages() throws FrontendCommunicationException {
-		try {
-			return tty  == null ? stdin.ready() : tty.reader().ready();
-		} catch (final IOException exc) {
-			throw new FrontendCommunicationException(exc);
-		}
+	public void sendMessage(@NonNull final TextOnlyTextMessage message) {
+		System.out.println("- " + message.getText());
 	}
 
 	@Override
-	public void sendMessage(@NonNull final TextOnlyTextMessage message) throws FrontendCommunicationException {
-		System.out.print("- ");
-		System.out.println(message.getText());
+	public boolean isMessageForBot(@NonNull final TextOnlyTextMessage message) {
+		return true;
 	}
 
 	@Override
-	public Class<TextOnlyTextMessage> getTextMessageType() {
-		return TextOnlyTextMessage.class;
-	}
-
-	@Override
-	public void close() throws IOException {
+	public void close() throws Exception {
 		// No resources to close
 	}
 }

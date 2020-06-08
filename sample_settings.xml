@@ -6,15 +6,15 @@
 
 	<documentDatabaseConnection>
 		<driver>org.sqlite.JDBC</driver>
-		<url>jdbc:sqlite:../corpus.db</url>
+		<url>jdbc:sqlite:../DB/corpus.db</url>
 	</documentDatabaseConnection>
 
 	<knowledgeBaseConnection>
-		<directory>../knowledge_base</directory>
+		<directory>../DB/knowledge_base</directory>
 	</knowledgeBaseConnection>
 
 	<luceneIndex>
-		<directory>../lucene_index</directory>
+		<directory>../DB/lucene_index</directory>
 	</luceneIndex>
 
 	<behavior>
@@ -34,7 +34,12 @@
 			<externalUrl>https://alejandropc.sytes.net:8443</externalUrl>
 			<!-- The URL for the internal server to bind to -->
 			<internalUrl>https://0.0.0.0:8443</internalUrl>
-			<!-- The HTTP URL path component that the internal server will bind this bot to -->
+			<!--
+				The HTTP URL path component that the internal server will bind this bot to.
+				Telegram recommends this component to be a shared secret, so only Telegram
+				servers will ever send a request to this path, but for this sample configuration
+				a constant string will do
+			-->
 			<botPath>TheVacBot</botPath>
 			<!-- The Java KeyStore where the certificate to use for HTTPS server authentication resides -->
 			<certificateStorePath>vacbot.jks</certificateStorePath>
@@ -42,7 +47,8 @@
 			<certificateStorePassword>p@ssw0rd</certificateStorePassword>
 			<!--
 				The public key to send to the Telegram servers, in case that the certificate is not
-				trusted by Telegram (i.e. self-signed or signed by a strange CA)
+				trusted by Telegram (i.e. self-signed or signed by a strange CA).
+				If not specified, no public key will be sent to the Telegram servers
 			-->
 			<publicKeyPath>vacbot.pem</publicKeyPath>
 		</webhookUpdate>
@@ -53,6 +59,9 @@
 		-->
 		<!--<longPollingUpdate/>-->
 	</telegramBotFrontend>
-	<!-- Alternatively, a CLI frontend can be used -->
+	<!--
+		Alternatively, a CLI frontend can be used for debugging, development,
+		interfacing with other programs and other purposes
+	-->
 	<!--<commandLineInterfaceFrontend/>-->
 </settings>

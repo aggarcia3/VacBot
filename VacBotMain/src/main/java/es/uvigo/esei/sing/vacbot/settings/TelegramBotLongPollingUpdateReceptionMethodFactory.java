@@ -5,6 +5,8 @@ package es.uvigo.esei.sing.vacbot.settings;
 import es.uvigo.esei.sing.vacbot.frontend.FrontendCommunicationException;
 import es.uvigo.esei.sing.vacbot.frontend.telegrambot.TelegramBotFrontendInterface;
 import jakarta.xml.bind.annotation.XmlRootElement;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.ToString;
 
@@ -15,15 +17,11 @@ import lombok.ToString;
  * @author Alejandro González García
  */
 @XmlRootElement(name = "longPollingUpdate")
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 @ToString
 public final class TelegramBotLongPollingUpdateReceptionMethodFactory implements TelegramBotUpdateReceptionMethodFactory {
-	/**
-	 * Restricts instantiation of this class to JAXB.
-	 */
-	private TelegramBotLongPollingUpdateReceptionMethodFactory() {}
-
 	@Override
-	public TelegramBotFrontendInterface getFrontendInterface(@NonNull final TelegramBotFrontendInterfaceFactory factory) throws FrontendCommunicationException {
+	public TelegramBotFrontendInterface getFrontendInterface(@NonNull final TelegramBotMessageDispatcherFactory factory) throws FrontendCommunicationException {
 		return new TelegramBotFrontendInterface(this, factory);
 	}
 }

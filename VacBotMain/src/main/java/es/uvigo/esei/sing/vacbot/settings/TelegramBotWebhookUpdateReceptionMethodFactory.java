@@ -13,7 +13,9 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 import jakarta.xml.bind.annotation.XmlValue;
 import jakarta.xml.bind.annotation.adapters.XmlAdapter;
 import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.ToString;
 
@@ -29,6 +31,7 @@ import lombok.ToString;
  *      examples</a>
  */
 @XmlRootElement(name = "webhookUpdate")
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 @ToString
 public final class TelegramBotWebhookUpdateReceptionMethodFactory implements TelegramBotUpdateReceptionMethodFactory {
 	/**
@@ -82,13 +85,8 @@ public final class TelegramBotWebhookUpdateReceptionMethodFactory implements Tel
 	@XmlJavaTypeAdapter(PublicKeyPathAdapter.class)
 	private final Path publicKeyPath = null;
 
-	/**
-	 * Restricts instantiation of this class to JAXB.
-	 */
-	private TelegramBotWebhookUpdateReceptionMethodFactory() {}
-
 	@Override
-	public TelegramBotFrontendInterface getFrontendInterface(@NonNull final TelegramBotFrontendInterfaceFactory factory) throws FrontendCommunicationException {
+	public TelegramBotFrontendInterface getFrontendInterface(@NonNull final TelegramBotMessageDispatcherFactory factory) throws FrontendCommunicationException {
 		return new TelegramBotFrontendInterface(this, factory);
 	}
 

@@ -11,6 +11,7 @@
 		<complexType mixed="false">
 			<sequence>
 				<element name="workerThreads" type="tns:naturalInteger" minOccurs="0"/>
+				<element name="nlpSettings" type="tns:nlpSettings" minOccurs="0"/>
 				<element name="documentDatabaseConnection" type="tns:documentDatabaseConnection"/>
 				<element name="knowledgeBaseConnection" type="tns:knowledgeBaseConnection"/>
 				<element name="luceneIndex" type="tns:luceneIndex"/>
@@ -27,6 +28,19 @@
 			</attribute>
 		</complexType>
 	</element>
+
+	<complexType name="nlpSettings">
+		<annotation>
+			<documentation>The settings used for configuring the NLP algorithms used by the bot.</documentation>
+		</annotation>
+		<all>
+			<element name="language" type="tns:nonEmptyString" minOccurs="0"/>
+			<element name="tokenizerOptions" type="tns:nonEmptyString" minOccurs="0"/>
+			<element name="posModel" type="tns:nonEmptyString" minOccurs="0"/>
+			<element name="parserModel" type="tns:nonEmptyString" minOccurs="0"/>
+			<element name="dependencyParseModel" type="tns:nonEmptyString" minOccurs="0"/>
+		</all>
+	</complexType>
 
 	<complexType name="documentDatabaseConnection">
 		<annotation>
@@ -50,6 +64,7 @@
 		</annotation>
 		<sequence>
 			<element name="directory" type="tns:nonEmptyString"/>
+			<element name="baseModelURI" type="tns:nonEmptyURI" minOccurs="0"/>
 		</sequence>
 	</complexType>
 
@@ -57,40 +72,42 @@
 		<annotation>
 			<documentation>The information needed to open and use the Lucene index for the database documents, as created by TextProc.</documentation>
 		</annotation>
-		<sequence>
+		<all>
 			<element name="directory" type="tns:nonEmptyString"/>
-		</sequence>
+			<element name="termFuzzyQueryDistance" type="nonNegativeInteger" minOccurs="0"/>
+			<element name="maxResults" type="tns:naturalInteger" minOccurs="0"/>
+		</all>
 	</complexType>
 
 	<complexType name="behavior">
 		<annotation>
-			<documentation>These settings control how the bot behaves to choose a response.</documentation>
+			<documentation>These settings control how the bot behaves when choosing a response.</documentation>
 		</annotation>
 		<sequence>
 			<element name="responseBias">
 				<annotation>
-					<documentation>The bias shown by the bot towards vaccination topics.</documentation>
+					<documentation>The bias shown by the bot towards vaccination topics, when using its knowledge base.</documentation>
 				</annotation>
 				<simpleType>
 					<restriction base="string">
 						<enumeration value="positive">
 							<annotation>
-								<documentation>The bot will try to select responses that show a positive sentiment towards vaccines.</documentation>
+								<documentation>The bot will try to select responses that show a positive sentiment.</documentation>
 							</annotation>
 						</enumeration>
 						<enumeration value="negative">
 							<annotation>
-								<documentation>The bot will try to select responses that show a negative sentiment towards vaccines.</documentation>
+								<documentation>The bot will try to select responses that show a negative sentiment.</documentation>
 							</annotation>
 						</enumeration>
 						<enumeration value="neutral">
 							<annotation>
-								<documentation>The bot will try to select responses that do not show any positive or negative sentiment towards vaccines.</documentation>
+								<documentation>The bot will try to select responses that do not show any positive or negative sentiment.</documentation>
 							</annotation>
 						</enumeration>
 						<enumeration value="impartial">
 							<annotation>
-								<documentation>The bot will not take into account the sentiment expressed towards vaccines to select responses.</documentation>
+								<documentation>The bot will not take into account the expressed sentiment to select responses.</documentation>
 							</annotation>
 						</enumeration>
 					</restriction>

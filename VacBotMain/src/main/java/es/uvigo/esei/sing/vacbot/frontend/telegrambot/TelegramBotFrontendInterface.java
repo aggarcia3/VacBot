@@ -2,8 +2,8 @@
 
 package es.uvigo.esei.sing.vacbot.frontend.telegrambot;
 
-import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -16,16 +16,22 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.bots.TelegramWebhookBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
+import org.telegram.telegrambots.meta.api.methods.send.SendChatAction;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Chat;
+import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.MessageEntity;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.User;
 import org.telegram.telegrambots.meta.bots.AbsSender;
 import org.telegram.telegrambots.meta.generics.BotSession;
 
 import es.uvigo.esei.sing.vacbot.frontend.FrontendCommunicationException;
 import es.uvigo.esei.sing.vacbot.frontend.FrontendInterface;
-import es.uvigo.esei.sing.vacbot.settings.TelegramBotFrontendInterfaceFactory;
+import es.uvigo.esei.sing.vacbot.settings.TelegramBotMessageDispatcherFactory;
 import es.uvigo.esei.sing.vacbot.settings.TelegramBotLongPollingUpdateReceptionMethodFactory;
 import es.uvigo.esei.sing.vacbot.settings.TelegramBotWebhookUpdateReceptionMethodFactory;
+import es.uvigo.esei.sing.vacbot.util.ExceptionThrowingSupplier;
 import lombok.NonNull;
 
 /**
@@ -34,17 +40,38 @@ import lombok.NonNull;
  *
  * @author Alejandro González García
  */
-public final class TelegramBotFrontendInterface implements FrontendInterface<TelegramTextMessage> {
-	private final Logger logger = LoggerFactory.getLogger(TelegramBotFrontendInterface.class);
+public final class TelegramBotFrontendInterface implements FrontendInterface<TelegramTextMessage, Chat> {
+	private final static Logger LOGGER = LoggerFactory.getLogger(TelegramBotFrontendInterface.class);
+
 	private final BotSession session;
 	private final BlockingQueue<TelegramTextMessage> messageQueue = new LinkedBlockingQueue<>(250); // 250 in-flight updates maximum
 	private final AbsSender telegramBot;
+	private final ExceptionThrowingSupplier<User, FrontendCommunicationException> botUserSupplier;
 
 	{
 		// Needed by telegrambots
 		ApiContextInitializer.init();
 
-		logger.trace("Telegrambots API context initialized");
+		LOGGER.trace("Telegrambots API context initialized");
+
+		// Thread-safe supplier
+		this.botUserSupplier = new ExceptionThrowingSupplier<>() {
+			private final Object botUserLock = new Object();
+			private User botUser = null;
+
+			@Override
+			public User throwingGet() throws FrontendCommunicationException {
+				try {
+					// AtomicReference may result in the Telegram API being called twice
+					// and breaking havoc, so we use plain mutexes
+					synchronized (botUserLock) {
+						return botUser == null ? telegramBot.getMe() : botUser;
+					}
+				} catch (final Exception exc) {
+					throw new FrontendCommunicationException(exc);
+				}
+			}
+		};
 	}
 
 	/**
@@ -61,7 +88,7 @@ public final class TelegramBotFrontendInterface implements FrontendInterface<Tel
 	 */
 	public TelegramBotFrontendInterface(
 		@NonNull final TelegramBotLongPollingUpdateReceptionMethodFactory longPollingFactory,
-		@NonNull final TelegramBotFrontendInterfaceFactory frontendInterfaceFactory
+		@NonNull final TelegramBotMessageDispatcherFactory frontendInterfaceFactory
 	) throws FrontendCommunicationException {
 		this.telegramBot = new TelegramLongPollingBot(getBotOptionsFromFactory(frontendInterfaceFactory)) {
 			@Override
@@ -86,7 +113,7 @@ public final class TelegramBotFrontendInterface implements FrontendInterface<Tel
 			throw new FrontendCommunicationException(exc);
 		}
 
-		logger.trace(
+		LOGGER.trace(
 			"Telegram bot frontend with long polling update reception method started"
 		);
 	}
@@ -104,7 +131,7 @@ public final class TelegramBotFrontendInterface implements FrontendInterface<Tel
 	 */
 	public TelegramBotFrontendInterface(
 		@NonNull final TelegramBotWebhookUpdateReceptionMethodFactory webhookFactory,
-		@NonNull final TelegramBotFrontendInterfaceFactory frontendInterfaceFactory
+		@NonNull final TelegramBotMessageDispatcherFactory frontendInterfaceFactory
 	) throws FrontendCommunicationException {
 		this.telegramBot = new TelegramWebhookBot(getBotOptionsFromFactory(frontendInterfaceFactory)) {
 			@Override
@@ -176,7 +203,7 @@ public final class TelegramBotFrontendInterface implements FrontendInterface<Tel
 			throw new FrontendCommunicationException(exc);
 		}
 
-		logger.trace(
+		LOGGER.trace(
 			"Telegram bot frontend with webhook update reception method started"
 		);
 	}
@@ -187,11 +214,6 @@ public final class TelegramBotFrontendInterface implements FrontendInterface<Tel
 	}
 
 	@Override
-	public boolean hasPendingMessages() throws FrontendCommunicationException {
-		return !messageQueue.isEmpty();
-	}
-
-	@Override
 	public void sendMessage(@NonNull final TelegramTextMessage message) throws FrontendCommunicationException {
 		final SendMessage sendMessage = message.toSendMessage();
 
@@ -199,28 +221,81 @@ public final class TelegramBotFrontendInterface implements FrontendInterface<Tel
 			// Sends a POST request to Telegram servers
 			telegramBot.execute(sendMessage);
 
-			logger.trace("Outgoing message: " + message);
+			LOGGER.trace("Outgoing message: " + message);
 		} catch (final Exception exc) {
 			throw new FrontendCommunicationException(exc);
 		}
 	}
 
 	@Override
-	public Class<TelegramTextMessage> getTextMessageType() {
-		return TelegramTextMessage.class;
+	public boolean isMessageForBot(@NonNull final TelegramTextMessage message) throws FrontendCommunicationException {
+		final int maxReplyDepth = 50;
+		boolean isForBot = message.getChat().isUserChat();
+
+		// Are further checks needed? We ignore messages from channels
+		if (!isForBot || !message.getChat().isChannelChat()) {
+			final List<MessageEntity> messageEntities = message.getEntities();
+
+			// First, check if the message explicitly mentions us.
+			// That only makes sense if the message contains entities
+			if (messageEntities != null && !messageEntities.isEmpty()) {
+				final Iterator<MessageEntity> iter = messageEntities.iterator();
+				while (!isForBot && iter.hasNext()) {
+					final MessageEntity entity = iter.next();
+
+					try {
+						final MessageEntityType entityType = MessageEntityType.getType(entity);
+
+						isForBot =
+							(MessageEntityType.MENTION == entityType || MessageEntityType.TEXT_MENTION == entityType) &&
+							(
+								entity.getText().equals("@" + botUserSupplier.throwingGet().getUserName()) ||
+								entity.getText().equals("@" + botUserSupplier.throwingGet().getFirstName())
+							);
+					} catch (final Exception exc) {
+						throw new FrontendCommunicationException(exc);
+					}
+				}
+			}
+
+			if (!isForBot) {
+				// If the message doesn't mention us, check if it replies to a message from us
+				// (either directly or indirectly)
+				Message repliedMessage = message.getThisMessage();
+
+				if (repliedMessage == null) {
+					throw new FrontendCommunicationException("The Telegram API message object is missing when it shouldn't");
+				}
+
+				int replyDepth = 0;
+				while (
+					!isForBot &&
+					(repliedMessage = repliedMessage.getReplyToMessage()) != null &&
+					replyDepth++ < maxReplyDepth
+				) {
+					isForBot = botUserSupplier.throwingGet().getId().equals(repliedMessage.getFrom().getId());
+				}
+			}
+		}
+
+		return isForBot;
 	}
 
 	@Override
-	public void close() throws IOException {
-		if (session != null) {
-			try {
-				session.stop();
+	public void notifyForthcomingResponse(@NonNull final Chat notificationData) throws FrontendCommunicationException {
+		try {
+			telegramBot.execute(new SendChatAction(notificationData.getId(), "typing"));
+		} catch (final Exception exc) {
+			throw new FrontendCommunicationException(exc);
+		}
+	}
 
-				logger.info("Bot session stopped");
-			} catch (final Exception exc) {
-				// Just in case...
-				throw new IOException(exc);
-			}
+	@Override
+	public void close() throws Exception {
+		if (session != null) {
+			session.stop();
+
+			LOGGER.info("Bot session stopped");
 		}
 	}
 
@@ -240,7 +315,7 @@ public final class TelegramBotFrontendInterface implements FrontendInterface<Tel
 				try {
 					messageQueue.put(textMessage);
 
-					logger.trace("Update enqueued: " + textMessage);
+					LOGGER.trace("Update enqueued: " + textMessage);
 
 					messageNotPut = false;
 				} catch (InterruptedException exc) {
@@ -250,7 +325,7 @@ public final class TelegramBotFrontendInterface implements FrontendInterface<Tel
 				}
 			}
 		} catch (final IllegalArgumentException ignored) {
-			logger.info(
+			LOGGER.info(
 				"Received unwanted or invalid update from Telegram with ID " +
 				update.getUpdateId()
 			);
@@ -259,14 +334,14 @@ public final class TelegramBotFrontendInterface implements FrontendInterface<Tel
 
 	/**
 	 * Retrieves the bot options contained in a
-	 * {@link TelegramBotFrontendInterfaceFactory} factory object, which should be
+	 * {@link TelegramBotMessageDispatcherFactory} factory object, which should be
 	 * used when instantiating this class.
 	 *
 	 * @param frontendInterfaceFactory The factory from which to get the settings.
 	 *                                 It is assumed to be not {@code null}.
 	 * @return The bot options to use when instantiating the Telegram bot class.
 	 */
-	private DefaultBotOptions getBotOptionsFromFactory(final TelegramBotFrontendInterfaceFactory frontendInterfaceFactory) {
+	private DefaultBotOptions getBotOptionsFromFactory(final TelegramBotMessageDispatcherFactory frontendInterfaceFactory) {
 		final DefaultBotOptions botOptions = new DefaultBotOptions();
 
 		botOptions.setMaxThreads(frontendInterfaceFactory.getMaxAsyncThreads());

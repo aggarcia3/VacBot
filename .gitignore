@@ -359,6 +359,9 @@ $RECYCLE.BIN/
 
 # End of https://www.gitignore.io/api/vim,java,linux,macos,emacs,maven,windows,eclipse,netbeans,intellij+all,visualstudiocode
 
+# Development configuration
+sample_settings_ide.xml
+
 # Maven package artifacts
 dist/
 
