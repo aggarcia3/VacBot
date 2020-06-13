@@ -55,6 +55,7 @@ public final class TelegramTextMessageDispatcher extends TextMessageDispatcher<T
 		TelegramTextMessage responseMessage = null;
 		String responseText = null;
 		List<MessageEntity> messageEntities = message.getEntities(); // May be null if no entities
+		final Chat chat = message.getChat();
 
 		// Only bother with canned responses and deleting mentions and commands if the text is not empty
 		if (!messageText.isBlank()) {
@@ -63,7 +64,7 @@ public final class TelegramTextMessageDispatcher extends TextMessageDispatcher<T
 				message.getForwardedSenderName() != null
 			) {
 				responseText = FORWARDED_CANNED_RESPONSES[prng.nextInt(FORWARDED_CANNED_RESPONSES.length)];
-			} else if (messageEntities != null && !messageEntities.isEmpty()){
+			} else if (messageEntities != null && !messageEntities.isEmpty()) {
 				for (final MessageEntity messageEntity : messageEntities) {
 					messageText = MessageEntityType.getType(messageEntity)
 						.adjustEntityInText(messageText, messageEntity);
@@ -73,21 +74,20 @@ public final class TelegramTextMessageDispatcher extends TextMessageDispatcher<T
 
 		// Delegate to the generator if a canned response is not applicable
 		if (responseText == null) {
-			final Chat chat = message.getChat();
-
 			if (ResponseGenerator.hasResponseTo(messageText)) {
 				notifyForthcomingResponse(chat);
 
 				responseText = ResponseGenerator.generateResponseTo(messageText, settings);
-				if (responseText != null) {
-					responseMessage = new TelegramTextMessage(
-						responseText,
-						Integer.MIN_VALUE, null, null, chat,
-						null, null, null, null, null, message.getThisMessage(),
-						null, null, null
-					);
-				}
 			}
+		}
+
+		if (responseText != null) {
+			responseMessage = new TelegramTextMessage(
+				responseText,
+				Integer.MIN_VALUE, null, null, chat,
+				null, null, null, null, null, message.getThisMessage(),
+				null, null, null
+			);
 		}
 
 		return responseMessage;
