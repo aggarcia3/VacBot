@@ -34,7 +34,7 @@ import lombok.ToString;
  */
 @XmlRootElement(name = "documentDatabaseConnection")
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-@ToString(exclude = "entityManagerFactory")
+@ToString(exclude = { "entityManagerFactory", "connectionPassword" } )
 public final class DocumentDatabaseConnectionSettings implements AutoCloseable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDatabaseConnectionSettings.class);
 

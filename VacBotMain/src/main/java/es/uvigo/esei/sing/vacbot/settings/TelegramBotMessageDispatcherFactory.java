@@ -29,7 +29,7 @@ import lombok.ToString;
  */
 @XmlRootElement(name = "telegramBotFrontend")
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-@ToString
+@ToString(exclude = "token")
 public final class TelegramBotMessageDispatcherFactory implements MessageDispatcherFactory<TelegramTextMessage, Chat> {
 	/**
 	 * The user name for the chatbot.
