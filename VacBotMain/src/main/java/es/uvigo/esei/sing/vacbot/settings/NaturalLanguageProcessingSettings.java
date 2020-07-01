@@ -25,14 +25,14 @@ public final class NaturalLanguageProcessingSettings {
 	 */
 	@Getter
 	@XmlElement(name = "language")
-	private final String language = "en";
+	private String language = "en";
 
 	/**
 	 * The options to pass to the CoreNLP tokenizer annotator.
 	 */
 	@Getter
 	@XmlElement(name = "tokenizerOptions")
-	private final String tokenizerOptions = "quotes=ascii";
+	private String tokenizerOptions = "quotes=ascii";
 
 	/**
 	 * The model to use for part of speech tagging.
@@ -40,7 +40,7 @@ public final class NaturalLanguageProcessingSettings {
 	@Getter
 	@XmlElement(name = "posModel")
 	// Mirror of a model included with the latest CoreNLP models (as of 03-26-2020)
-	private final String posModel = "https://dl.dropboxusercontent.com/s/bmqus6uon0cr9ek/english-caseless-left3words-distsim.tagger";
+	private String posModel = "https://dl.dropboxusercontent.com/s/bmqus6uon0cr9ek/english-caseless-left3words-distsim.tagger";
 
 	/**
 	 * The model to use for constituency parsing.
@@ -50,7 +50,7 @@ public final class NaturalLanguageProcessingSettings {
 	// Mirror of a model included with the latest CoreNLP models (as of 03-26-2020).
 	// It is a shift-reduce parser, more efficient than the default, based on PCFG.
 	// See: https://nlp.stanford.edu/software/srparser.html
-	private final String parserModel = "https://dl.dropboxusercontent.com/s/ltq27ez8lr4nwb4/englishSR.beam.ser.gz";
+	private String parserModel = "https://dl.dropboxusercontent.com/s/ltq27ez8lr4nwb4/englishSR.beam.ser.gz";
 
 	/**
 	 * The model to use for dependency parsing.
@@ -58,7 +58,7 @@ public final class NaturalLanguageProcessingSettings {
 	@Getter
 	@XmlElement(name = "dependencyParseModel")
 	// Mirror of a model included with the latest CoreNLP models (as of 03-26-2020)
-	private final String dependencyParseModel = "https://dl.dropboxusercontent.com/s/jrrgezz7ng29i2i/english_wsj_UD.gz";
+	private String dependencyParseModel = "https://dl.dropboxusercontent.com/s/jrrgezz7ng29i2i/english_wsj_UD.gz";
 
 	/**
 	 * Returns a {@link NaturalLanguageProcessingSettings} instance with the default
